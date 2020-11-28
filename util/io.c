@@ -1,4 +1,4 @@
-#include "send.h"
+#include "io.h"
 
 #include "log.h"
 
@@ -7,8 +7,12 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+/*
+ * XXX this is all basically implementing OpenSSL's BIO stuff
+ */
+
 int
-send_file(const char *const filepath, sender_fn_t sendf, const void *const arg)
+io_send_file(const char *const filepath, io_send_fn_t sendf, const void *const arg)
 {
 	if (filepath == NULL || sendf == NULL) {
 		return -1;

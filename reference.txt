@@ -2,3 +2,4 @@ Here are some resources that I've found useful.
 
 * https://www.jmarshall.com/easy/http/
 * https://aticleworld.com/ssl-server-client-using-openssl-in-c/
+* https://quuxplusone.github.io/blog/2020/01/26/openssl-part-3/

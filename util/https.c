@@ -1,8 +1,9 @@
 #include "https.h"
 
 #include "file.h"
+#include "io.h"
 #include "log.h"
-#include "send.h"
+#include "request.h"
 #include "types.h"
 
 #include <unistd.h>
@@ -144,21 +145,31 @@ log_certs(const SSL *const ssl)
 }
 
 static ssize_t
-send_fn(const char *const buf, const size_t len, const void *const arg)
+https_send_fn(const char *const buf, const size_t len, const void *const arg)
 {
 	if (buf == NULL || arg == NULL) {
 		return -1;
 	}
 	SSL *ssl = (SSL *)arg;
-	if (len > INT_MAX) {
-		log_error("len > INT_MAX");
+	return SSL_write(ssl, buf, len);
+}
+
+static ssize_t
+https_recv_fn(char *const buf, const size_t len, const void *const arg)
+{
+	if (buf == NULL || arg == NULL) {
 		return -1;
 	}
-	return SSL_write(ssl, buf, (int)len);
+	SSL *ssl = (SSL *)arg;
+	return SSL_read(ssl, buf, len);
 }
 
 /*
- * TODO implement buffered reader
+ * TODO implement buffered reader. Requests are ended by `\r\n\r\n`,
+ * so look for that.
+ * This send_fn/recv_fn business seems to be heading in the direction
+ * of re-implementing (in a very stripped-down form) OpenSSL's "BIO"
+ * concept, so maybe look at that.
  */
 int https_handle(const int sd)
 {
@@ -172,51 +183,5 @@ int https_handle(const int sd)
 
 	log_certs(ssl);
 
-	/* read line */
-	char buf[1028];
-	char *nwln = NULL;
-	int nread = SSL_read(ssl, buf, sizeof(buf));
-	if (nread <= 0 || (nwln = strchr(buf, '\n')) == NULL) {
-		log_error_ssl("no info read, or no newline found");
-		return -1;
-	} else {
-		const unsigned len = (unsigned)(nwln - buf);
-		char buf2[1028];
-		strncpy(buf2, buf, len);
-		buf2[len] = '\0';
-		log_info("got line: %s", buf2);
-
-		buf[sizeof(buf)-1] = '\0';
-		log_info("got all: '%s'", buf);
-	}
-	
-	/* write the file */
-	const char *const file = "docroot/index.html";
-	ssize_t file_size;
-	if (get_file_size(file, &file_size) != 0) {
-		log_error("failed to get size of %s", file);
-		return -1;
-	}
-
-	char resp[128];	
-	snprintf(resp, sizeof(resp), "HTTP/1.0 200 OK\r\n\r\n");
-	SSL_write(ssl, resp, (int)strlen(resp));
-#if 0
-	snprintf(resp, sizeof(resp), "HTTP/1.0 200 OK\r\n");
-	send(socket_desc, resp, strlen(resp), 0);
-
-	snprintf(resp, sizeof(resp), "Content-Type: text/html\r\n");
-	send(socket_desc, resp, strlen(resp), 0);
-
-	snprintf(resp, sizeof(resp), "Content-Length: %lu\r\n\r\n", file_size);
-	send(socket_desc, resp, strlen(resp), 0);
-#endif
-
-	log_info("size of %s is %ld", file, file_size);
-	if (send_file(file, send_fn, ssl) != 0) {
-		log_error("failed to serve file");
-		return -1;
-	}
-
-	return 0;
+	return handle_http_request(https_send_fn, https_recv_fn, ssl);
 }
