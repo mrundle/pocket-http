@@ -49,7 +49,6 @@ socket_create(const uint16_t port, int *const socket_desc_out)
  	 * mark the socket as passive, indicating that it will be used
  	 * to accept incoming connections
  	 */
-	const int backlog = 32;
 	if (listen(sd, 8) != 0) {
 		log_strerror("failed to listen");
 		return -1;
@@ -76,7 +75,8 @@ socket_handle(const int socket_desc, int (*handle)(const int socket_desc))
 		log_strerror("failed to handle");
 		return -1;	
 	}
-  
+
+	shutdown(client_desc, SHUT_RDWR);
 	close(client_desc);  
 	return 0;
 }

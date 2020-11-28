@@ -1,3 +1,4 @@
+*.o
+*.su
 certs/
 pocket-http
-util/*.o

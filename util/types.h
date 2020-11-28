@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define elementsof(__x) ({ \
     (sizeof(__x) / sizeof((__x)[0])); \

@@ -1,0 +1,4 @@
+Here are some resources that I've found useful.
+
+* https://www.jmarshall.com/easy/http/
+* https://aticleworld.com/ssl-server-client-using-openssl-in-c/

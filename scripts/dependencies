@@ -1,0 +1,23 @@
+#!/bin/bash
+# Checks whether dependencies are installed. Assumes that
+# your system uses `rpm`.
+
+dependencies=(
+	gcc
+	openssl-devel
+)
+
+ok=true
+
+for dependency in ${dependencies[@]}; do
+	printf "$dependency is "
+	if rpm -q $dependency >/dev/null 2>&1; then
+		echo "installed"
+	else
+		echo "not installed"
+		ok=false
+	fi
+done
+
+$ok && echo OK || echo ERROR
+$ok

@@ -1,0 +1,26 @@
+#!/bin/bash -eu
+
+banner() { echo -e "\n\n===== $@ =====\n\n"; }
+
+if [[ $UID -ne 0 ]]; then
+	echo "Run as root"
+	exit 1
+fi
+
+./pocket-http &
+PID=$!
+trap "kill $PID" EXIT
+
+banner "Testing localhost port 80 (http)"
+output=$(curl --silent http://localhost 2>&1)
+banner "Output"
+echo "$output"
+
+#
+# TODO use a real cert to allow browser testing. Right now
+# this only works locally with --insecure
+#
+banner "Testing localhost port 443 (https)"
+output=$(curl --silent --insecure https://127.0.0.1 2>&1)
+banner "Output"
+echo "$output"

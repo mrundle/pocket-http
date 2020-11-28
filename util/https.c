@@ -1,6 +1,8 @@
 #include "https.h"
 
+#include "file.h"
 #include "log.h"
+#include "send.h"
 #include "types.h"
 
 #include <unistd.h>
@@ -8,7 +10,9 @@
 #include <openssl/err.h>
 
 /* created via `make` */
-#define CERT_PATH "./certs/cert.pem"
+#ifndef CERT_PATH
+#error -DCERT_PATH="/path/to/cert.pem" not set
+#endif
 
 static SSL_CTX *ctx = NULL;
 
@@ -45,20 +49,6 @@ load_certs(void)
 
 	return 0;
 }
-#if 0
-    /* set the private key from KeyFile (may be the same as CertFile) */
-    if ( SSL_CTX_use_PrivateKey_file(ctx, KeyFile, SSL_FILETYPE_PEM) <= 0 )
-    {
-        ERR_print_errors_fp(stderr);
-        abort();
-    }
-    /* verify private key */
-    if ( !SSL_CTX_check_private_key(ctx) )
-    {
-        fprintf(stderr, "Private key does not match the public certificate\n");
-        abort();
-    }
-#endif
 
 static int
 ssl_init(void)
@@ -153,6 +143,20 @@ log_certs(const SSL *const ssl)
 	return;
 }
 
+static ssize_t
+send_fn(const char *const buf, const size_t len, const void *const arg)
+{
+	if (buf == NULL || arg == NULL) {
+		return -1;
+	}
+	SSL *ssl = (SSL *)arg;
+	if (len > INT_MAX) {
+		log_error("len > INT_MAX");
+		return -1;
+	}
+	return SSL_write(ssl, buf, (int)len);
+}
+
 /*
  * TODO implement buffered reader
  */
@@ -174,7 +178,7 @@ int https_handle(const int sd)
 	int nread = SSL_read(ssl, buf, sizeof(buf));
 	if (nread <= 0 || (nwln = strchr(buf, '\n')) == NULL) {
 		log_error_ssl("no info read, or no newline found");
-		//return -1; // XXX
+		return -1;
 	} else {
 		const unsigned len = (unsigned)(nwln - buf);
 		char buf2[1028];
@@ -186,7 +190,33 @@ int https_handle(const int sd)
 		log_info("got all: '%s'", buf);
 	}
 	
-	const char resp[] = "HTTP/1.0 200 OK\n";
-	write(sd, resp, strlen(resp));
+	/* write the file */
+	const char *const file = "docroot/index.html";
+	ssize_t file_size;
+	if (get_file_size(file, &file_size) != 0) {
+		log_error("failed to get size of %s", file);
+		return -1;
+	}
+
+	char resp[128];	
+	snprintf(resp, sizeof(resp), "HTTP/1.0 200 OK\r\n\r\n");
+	SSL_write(ssl, resp, (int)strlen(resp));
+#if 0
+	snprintf(resp, sizeof(resp), "HTTP/1.0 200 OK\r\n");
+	send(socket_desc, resp, strlen(resp), 0);
+
+	snprintf(resp, sizeof(resp), "Content-Type: text/html\r\n");
+	send(socket_desc, resp, strlen(resp), 0);
+
+	snprintf(resp, sizeof(resp), "Content-Length: %lu\r\n\r\n", file_size);
+	send(socket_desc, resp, strlen(resp), 0);
+#endif
+
+	log_info("size of %s is %ld", file, file_size);
+	if (send_file(file, send_fn, ssl) != 0) {
+		log_error("failed to serve file");
+		return -1;
+	}
+
 	return 0;
 }

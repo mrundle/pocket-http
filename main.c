@@ -97,7 +97,6 @@ launch_handler(struct handler *const hh)
 int
 main(int argc, char **argv)
 {
-
 	if (getuid() != 0) {
 		fprintf(stderr, "%s: needs to run as root\n", argv[0]);
 		exit(EXIT_FAILURE);
