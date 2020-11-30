@@ -21,10 +21,9 @@ all: $(CERT) $(APP)
 $(APP): main.c $(UTIL_OBJS)
 	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
-# Creates a junk cert
 $(CERT):
 	@mkdir -p $(dir $@)
-	@yes "US" | openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout $@ -out $@
+	@openssl req -x509 -nodes -days 365 -newkey rsa:1024 -keyout $@ -out $@
 
 clean:
 	rm -f $(APP) $(UTIL_OBJS)

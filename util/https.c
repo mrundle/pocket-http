@@ -6,9 +6,10 @@
 #include "request.h"
 #include "types.h"
 
-#include <unistd.h>
-#include <openssl/ssl.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
+#include <openssl/ssl.h>
+#include <unistd.h>
 
 /* created via `make` */
 #ifndef CERT_PATH
@@ -52,11 +53,25 @@ load_certs(void)
 }
 
 static int
+seed(void)
+{
+	unsigned char buf[128];
+
+	if (RAND_bytes(buf, sizeof(buf)) != 1) {
+		log_error_ssl("failed to generate rand bytes");
+		return -1;
+	}
+	return 0;
+}
+
+static int
 ssl_init(void)
 {
 	SSL_library_init();
 	OpenSSL_add_all_algorithms(); /* load crypto libraries */
 	SSL_load_error_strings();     /* register error messages */
+
+	seed();
 
 	/* create new client-method instance */	
 	const SSL_METHOD *const method = TLSv1_2_server_method();

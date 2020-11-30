@@ -102,6 +102,18 @@ main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	if (argc != 2) {
+		fprintf(stderr, "usage: %s /path/to/docroot\n", argv[0]);
+		exit(EXIT_FAILURE);
+	}
+
+	/* change to docroot */
+	const char *const root = argv[1];
+	if (chroot(root) == -1) {
+		log_strerror("failed to chroot %s", root);
+		exit(EXIT_FAILURE);
+	}
+
 	for (unsigned i = 0; i < elementsof(handlers); i++) {
 		if (launch_handler(&handlers[i]) != 0) {
 			fatal("failed to launch handler");

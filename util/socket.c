@@ -1,15 +1,15 @@
 #include "socket.h"
 #include "log.h"
 
-#include <netdb.h> 
-#include <netinet/in.h> 
-#include <sys/socket.h> 
-#include <sys/types.h> 
+#include <netdb.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <unistd.h>
 #include <stdio.h>
-#include <stdlib.h> 
-#include <string.h> 
+#include <stdlib.h>
+#include <string.h>
 
 int
 socket_create(const uint16_t port, int *const socket_desc_out)
@@ -20,7 +20,7 @@ socket_create(const uint16_t port, int *const socket_desc_out)
 	}
 
 	/* create tcp socket */
-	int sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP); 
+	int sd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sd == -1) {
 		log_strerror("failed to create socket");
 		return sd;
@@ -72,11 +72,10 @@ socket_handle(const int socket_desc, int (*handle)(const int socket_desc))
 
 	/* run the handler */
 	if (handle(client_desc) != 0) {
-		log_strerror("failed to handle");
-		return -1;	
+		log_error("failed to handle request");
 	}
 
 	shutdown(client_desc, SHUT_RDWR);
-	close(client_desc);  
+	close(client_desc);
 	return 0;
 }

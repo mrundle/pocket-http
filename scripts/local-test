@@ -1,26 +1,43 @@
 #!/bin/bash -eu
 
-banner() { echo -e "\n\n===== $@ =====\n\n"; }
+banner() {
+	echo -e "\n========================== $@\n";
+}
 
 if [[ $UID -ne 0 ]]; then
 	echo "Run as root"
 	exit 1
 fi
 
-./pocket-http &
+is_running() {
+	sudo lsof -i -P -n | grep -qE '\*:(80|443)'
+}
+
+if is_running; then
+	echo "pocket-http is already running, bailing"
+	exit 1
+fi
+
+./pocket-http ./docroot/ &
 PID=$!
 trap "kill $PID" EXIT
 
-banner "Testing localhost port 80 (http)"
-output=$(curl --silent http://localhost 2>&1)
-banner "Output"
-echo "$output"
+for kind in http https; do
+	if [[ $kind == http ]]; then
+		port=80
+		xtra=""
+	else
+		port=443
+		xtra="--insecure"
+	fi
+	banner "Testing localhost on port $port: $kind GET"
+	echo "curl --silent $xtra $kind://localhost/index.html"
+	output=$(curl --silent $xtra $kind://localhost/index.html 2>&1)
+	banner "Output"
+	echo "$output"
 
-#
-# TODO use a real cert to allow browser testing. Right now
-# this only works locally with --insecure
-#
-banner "Testing localhost port 443 (https)"
-output=$(curl --silent --insecure https://127.0.0.1 2>&1)
-banner "Output"
-echo "$output"
+	banner "Testing localhost on port $port: $kind HEAD"
+	output=$(curl --silent --head $xtra $kind://localhost/index.html 2>&1)
+	banner "Output"
+	echo "$output"
+done
